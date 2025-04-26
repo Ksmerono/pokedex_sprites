@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon 1ª Generación</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/lista_pokemon.css">
+</head>
+<body>
+    <h1 id="generationTitle"></h1>
+    <div class="pokemon-list" id="pokemonList"></div>
+    <div id="popup" class="popup-overlay">
+        <div class="popup-content">
+            <button id="closePopup">Cerrar</button>
+            <h2 id="popupName"></h2>
+            <p id="popupType"></p>
+            <div>
+                <p>Normal</p>
+                <img id="popupNormal" src="" alt="Normal Sprite" style="margin:10px;">
+                <img id="popupBack" src="" alt="Back Sprite" style="margin:10px;">
+            </div>
+            <div>
+                <p>Brillante</p>
+                <img id="popupShiny" src="" alt="Shiny Sprite" style="margin:10px;">
+                <img id="popupShinyBack" src="" alt="Shiny Back Sprite" style="margin:10px;">
+            </div>
+        </div>
+    </div>
+<script src="js/lista_pokemon.js"></script>
+</body>
+</html>
