@@ -49,7 +49,7 @@ const { generationInfo } = Astro.props;
   <dialog id="pokemonPopup" class="pokemon-dialog">
     <article class="dialog-card">
       <button id="closePopup" class="close-button" type="button" aria-label="Cerrar popup">
-        Cerrar
+        <span aria-hidden="true">&times;</span>
       </button>
       <p id="popupDexId" class="popup-dex"></p>
       <h2 id="popupName" class="pixel-title popup-name"></h2>
@@ -186,7 +186,10 @@ const { generationInfo } = Astro.props;
       popupDexId.textContent = `#${String(details.id).padStart(4, "0")}`;
       popupName.textContent = details.name;
       popupType.innerHTML = details.types
-        .map((item) => `<span class="type-pill pixel-type">${item.type.name}</span>`)
+        .map((item) => {
+          const [bgColor] = typeColors[item.type.name] || typeColors.normal;
+          return `<span class="type-pill pixel-type" style="--pill-color:${bgColor};">${item.type.name}</span>`;
+        })
         .join("");
 
       popupNormal.src = details.sprites.front_default || fallbackSprite;
@@ -393,12 +396,24 @@ const { generationInfo } = Astro.props;
     position: absolute;
     top: 1rem;
     right: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    aspect-ratio: 1 / 1;
+    flex: 0 0 auto;
     border: 2px solid var(--border);
-    border-radius: 999px;
-    background: #ffcf56;
-    padding: 0.6rem 0.9rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ffd6db, #ffc2ca);
+    color: #b94c62;
+    padding: 0;
     cursor: pointer;
     font-weight: 700;
+  }
+
+  .close-button span {
+    font-size: 1.5rem;
+    line-height: 1;
   }
 
   .popup-dex {
@@ -424,7 +439,12 @@ const { generationInfo } = Astro.props;
     padding: 0.45rem 0.7rem;
     border: 2px solid var(--border);
     border-radius: 999px;
-    background: white;
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--pill-color, #fffaf0) 24%, white),
+        color-mix(in srgb, var(--pill-color, #fffaf0) 12%, #fff7ef)
+      );
     text-transform: capitalize;
     font-weight: 700;
     color: var(--text);
