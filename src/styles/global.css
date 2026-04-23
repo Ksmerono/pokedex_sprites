@@ -46,3 +46,10 @@ input {
   letter-spacing: 0.04em;
   line-height: 1.4;
 }
+
+.pixel-type {
+  font-family: "Press Start 2P", cursive;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  font-size: 0.8rem;
+}

@@ -186,7 +186,7 @@ const { generationInfo } = Astro.props;
       popupDexId.textContent = `#${String(details.id).padStart(4, "0")}`;
       popupName.textContent = details.name;
       popupType.innerHTML = details.types
-        .map((item) => `<span class="type-pill">${item.type.name}</span>`)
+        .map((item) => `<span class="type-pill pixel-type">${item.type.name}</span>`)
         .join("");
 
       popupNormal.src = details.sprites.front_default || fallbackSprite;
