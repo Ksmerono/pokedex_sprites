@@ -1,0 +1,495 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { generations } from "../../data/generations";
+
+export function getStaticPaths() {
+  return generations.map((generation) => ({
+    params: { generation: generation.id },
+    props: { generationInfo: generation }
+  }));
+}
+
+const { generationInfo } = Astro.props;
+---
+
+<BaseLayout
+  title={`${generationInfo.label} | Pokedex`}
+  description={`Lista de Pokemon de ${generationInfo.region} con sprites normales y shiny.`}
+>
+  <main class="shell generation-page">
+    <a href="/" class="back-link">Volver a generaciones</a>
+
+    <section
+      class="hero"
+      style={`--accent:${generationInfo.accent}; --glow:${generationInfo.glow};`}
+    >
+      <div>
+        <p class="hero-kicker">{generationInfo.label}</p>
+        <h1 class="pixel-title">Region {generationInfo.region}</h1>
+      </div>
+      <div class="hero-stats">
+        <span>{generationInfo.pokemonCount} Pokemon</span>
+        <span>{generationInfo.years}</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="panel-kicker">Sprites</p>
+          <h2 id="generationTitle">Cargando Pokemon...</h2>
+        </div>
+        <p id="statusMessage" class="status-message">Preparando la Pokedex de la generacion.</p>
+      </div>
+
+      <div id="pokemonList" class="pokemon-list" data-generation={generationInfo.id}></div>
+    </section>
+  </main>
+
+  <dialog id="pokemonPopup" class="pokemon-dialog">
+    <article class="dialog-card">
+      <button id="closePopup" class="close-button" type="button" aria-label="Cerrar popup">
+        Cerrar
+      </button>
+      <p id="popupDexId" class="popup-dex"></p>
+      <h2 id="popupName" class="pixel-title popup-name"></h2>
+      <p id="popupType" class="popup-type"></p>
+
+      <div class="sprite-grid">
+        <section>
+          <h3>Normal</h3>
+          <div class="sprite-pair">
+            <figure>
+              <img id="popupNormal" src="" alt="Sprite frontal" />
+              <figcaption>Frontal</figcaption>
+            </figure>
+            <figure>
+              <img id="popupBack" src="" alt="Sprite trasero" />
+              <figcaption>Trasero</figcaption>
+            </figure>
+          </div>
+        </section>
+        <section>
+          <h3>Shiny</h3>
+          <div class="sprite-pair">
+            <figure>
+              <img id="popupShiny" src="" alt="Sprite shiny frontal" />
+              <figcaption>Frontal</figcaption>
+            </figure>
+            <figure>
+              <img id="popupShinyBack" src="" alt="Sprite shiny trasero" />
+              <figcaption>Trasero</figcaption>
+            </figure>
+          </div>
+        </section>
+      </div>
+    </article>
+  </dialog>
+
+  <script is:inline define:vars={{ generationInfo }}>
+    const generationTitle = document.getElementById("generationTitle");
+    const pokemonList = document.getElementById("pokemonList");
+    const statusMessage = document.getElementById("statusMessage");
+    const popup = document.getElementById("pokemonPopup");
+    const popupDexId = document.getElementById("popupDexId");
+    const popupName = document.getElementById("popupName");
+    const popupType = document.getElementById("popupType");
+    const popupNormal = document.getElementById("popupNormal");
+    const popupBack = document.getElementById("popupBack");
+    const popupShiny = document.getElementById("popupShiny");
+    const popupShinyBack = document.getElementById("popupShinyBack");
+    const closePopup = document.getElementById("closePopup");
+    const fallbackSprite = "https://upload.wikimedia.org/wikipedia/commons/5/55/Question_Mark.svg";
+
+    const typeColors = {
+      normal: ["#a8a878", "#d8d8b8"],
+      fire: ["#f08030", "#f8d030"],
+      water: ["#6890f0", "#98d8d8"],
+      grass: ["#78c850", "#a8b820"],
+      electric: ["#f8d030", "#f5ac78"],
+      ice: ["#98d8d8", "#b8a038"],
+      fighting: ["#c03028", "#f85888"],
+      poison: ["#a040a0", "#705898"],
+      ground: ["#e0c068", "#c8a050"],
+      flying: ["#a890f0", "#7038f8"],
+      psychic: ["#f85888", "#ee99ac"],
+      bug: ["#a8b820", "#78c850"],
+      rock: ["#b8a038", "#c03028"],
+      ghost: ["#705898", "#705848"],
+      dark: ["#705848", "#a8a878"],
+      dragon: ["#7038f8", "#6890f0"],
+      steel: ["#b8b8d0", "#a8a878"],
+      fairy: ["#ee99ac", "#f8d030"]
+    };
+
+    generationTitle.textContent = `Pokemon de ${generationInfo.region}`;
+
+    async function loadPokemon() {
+      try {
+        const apiUrl = `https://pokeapi.co/api/v2/pokemon?limit=${generationInfo.pokemonCount}&offset=${generationInfo.offset}`;
+        const response = await fetch(apiUrl);
+
+        if (!response.ok) {
+          throw new Error("No se pudo cargar la generacion.");
+        }
+
+        const data = await response.json();
+        const pokemonDetails = await Promise.all(
+          data.results.map(async (pokemon) => {
+            const detailResponse = await fetch(pokemon.url);
+            if (!detailResponse.ok) {
+              throw new Error(`No se pudo cargar ${pokemon.name}.`);
+            }
+            return detailResponse.json();
+          })
+        );
+
+        pokemonDetails.sort((a, b) => a.id - b.id);
+        pokemonList.innerHTML = "";
+
+        pokemonDetails.forEach((details, index) => {
+          const card = buildPokemonCard(details);
+          card.style.animationDelay = `${Math.min(index * 25, 500)}ms`;
+          pokemonList.append(card);
+        });
+
+        statusMessage.textContent = `${pokemonDetails.length} Pokemon listos para explorar.`;
+      } catch (error) {
+        console.error(error);
+        statusMessage.textContent = "Hubo un error al cargar la Pokedex.";
+        pokemonList.innerHTML = `<p class="error-card">No se pudieron cargar los Pokemon ahora mismo.</p>`;
+      }
+    }
+
+    function buildPokemonCard(details) {
+      const card = document.createElement("button");
+      const types = details.types.map((item) => item.type.name);
+      const primary = typeColors[types[0]] || typeColors.normal;
+      const secondary = typeColors[types[1]] || [primary[1], primary[0]];
+
+      card.type = "button";
+      card.className = "pokemon-card";
+      card.style.setProperty("--type-color1", primary[0]);
+      card.style.setProperty("--type-color2", secondary[0]);
+      card.innerHTML = `
+        <span class="pokemon-number">#${String(details.id).padStart(4, "0")}</span>
+        <img src="${details.sprites.front_default || fallbackSprite}" alt="${details.name}" loading="lazy" />
+        <strong class="pokemon-name">${details.name}</strong>
+        <span class="pokemon-types">${types.join(" / ")}</span>
+      `;
+
+      card.addEventListener("click", () => showPopup(details));
+      return card;
+    }
+
+    function showPopup(details) {
+      popupDexId.textContent = `#${String(details.id).padStart(4, "0")}`;
+      popupName.textContent = details.name;
+      popupType.innerHTML = details.types
+        .map((item) => `<span class="type-pill">${item.type.name}</span>`)
+        .join("");
+
+      popupNormal.src = details.sprites.front_default || fallbackSprite;
+      popupBack.src = details.sprites.back_default || fallbackSprite;
+      popupShiny.src = details.sprites.front_shiny || fallbackSprite;
+      popupShinyBack.src = details.sprites.back_shiny || fallbackSprite;
+      popup.showModal();
+    }
+
+    closePopup.addEventListener("click", () => popup.close());
+    popup.addEventListener("click", (event) => {
+      if (event.target === popup) {
+        popup.close();
+      }
+    });
+
+    loadPokemon();
+  </script>
+</BaseLayout>
+
+<style>
+  .generation-page {
+    padding: 2rem 0 4rem;
+  }
+
+  .back-link {
+    display: inline-flex;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    font-weight: 700;
+  }
+
+  .hero {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: end;
+    padding: 1.6rem;
+    border: 3px solid var(--border);
+    border-radius: 28px;
+    background:
+      radial-gradient(circle at top right, color-mix(in srgb, var(--glow) 65%, white), transparent 32%),
+      linear-gradient(135deg, color-mix(in srgb, var(--accent) 24%, white), rgba(255, 252, 242, 0.96));
+    box-shadow: var(--shadow);
+  }
+
+  .hero-kicker,
+  .panel-kicker,
+  .status-message,
+  .hero-stats span,
+  .popup-dex,
+  .popup-type,
+  .sprite-grid figcaption {
+    color: var(--muted);
+  }
+
+  .hero-kicker,
+  .panel-kicker {
+    margin: 0 0 0.8rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .hero h1 {
+    margin: 0;
+    font-size: clamp(1.45rem, 4vw, 2.6rem);
+  }
+
+  .hero-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: flex-end;
+  }
+
+  .hero-stats span {
+    padding: 0.75rem 0.9rem;
+    border: 2px solid var(--border);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.68);
+    font-weight: 700;
+  }
+
+  .panel {
+    margin-top: 1.4rem;
+    padding: 1.4rem;
+    border: 3px solid var(--border);
+    border-radius: 28px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
+  }
+
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: end;
+    margin-bottom: 1rem;
+  }
+
+  .panel-head h2 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+
+  .status-message {
+    margin: 0;
+    text-align: right;
+  }
+
+  .pokemon-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+  }
+
+  :global(.pokemon-card) {
+    appearance: none;
+    position: relative;
+    display: grid;
+    gap: 0.5rem;
+    align-content: start;
+    padding: 1rem 0.9rem;
+    border: 3px solid var(--border);
+    border-radius: 24px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 250, 240, 0.92)),
+      linear-gradient(135deg, var(--type-color1), var(--type-color2));
+    cursor: pointer;
+    box-shadow: 0 14px 0 rgba(34, 31, 26, 0.1);
+    transform: translateY(12px);
+    opacity: 0;
+    animation: rise-in 420ms ease forwards;
+  }
+
+  :global(.pokemon-card:hover) {
+    transform: translateY(-4px) rotate(-1deg);
+    box-shadow: 0 20px 0 rgba(34, 31, 26, 0.12);
+  }
+
+  :global(.pokemon-card img) {
+    width: 96px;
+    height: 96px;
+    margin: 0 auto;
+    image-rendering: pixelated;
+  }
+
+  :global(.pokemon-number) {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+
+  :global(.pokemon-name) {
+    font-family: "Press Start 2P", cursive;
+    font-size: 0.74rem;
+    line-height: 1.5;
+    text-transform: capitalize;
+  }
+
+  :global(.pokemon-types) {
+    text-transform: capitalize;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+
+  :global(.error-card) {
+    margin: 0;
+    padding: 1rem;
+    border: 2px solid var(--border);
+    border-radius: 20px;
+    background: white;
+  }
+
+  .pokemon-dialog {
+    width: min(760px, calc(100% - 1.5rem));
+    border: none;
+    padding: 0;
+    background: transparent;
+  }
+
+  .pokemon-dialog::backdrop {
+    background: rgba(20, 18, 12, 0.72);
+    backdrop-filter: blur(6px);
+  }
+
+  .dialog-card {
+    position: relative;
+    padding: 1.5rem;
+    border: 3px solid var(--border);
+    border-radius: 28px;
+    background: var(--surface-strong);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  }
+
+  .close-button {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    border: 2px solid var(--border);
+    border-radius: 999px;
+    background: #ffcf56;
+    padding: 0.6rem 0.9rem;
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  .popup-dex {
+    margin: 0;
+    font-weight: 700;
+  }
+
+  .popup-name {
+    margin: 0.6rem 0 0.8rem;
+    font-size: clamp(1rem, 4vw, 1.4rem);
+    text-transform: capitalize;
+  }
+
+  .popup-type {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 0;
+  }
+
+  :global(.type-pill) {
+    display: inline-flex;
+    padding: 0.45rem 0.7rem;
+    border: 2px solid var(--border);
+    border-radius: 999px;
+    background: white;
+    text-transform: capitalize;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .sprite-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1.4rem;
+  }
+
+  .sprite-grid section {
+    padding: 1rem;
+    border: 2px solid var(--border);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.72);
+  }
+
+  .sprite-grid h3 {
+    margin-top: 0;
+  }
+
+  .sprite-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .sprite-grid figure {
+    margin: 0;
+    text-align: center;
+  }
+
+  .sprite-grid img {
+    width: 100%;
+    max-width: 120px;
+    image-rendering: pixelated;
+  }
+
+  @keyframes rise-in {
+    from {
+      transform: translateY(12px);
+      opacity: 0;
+    }
+
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .hero,
+    .panel-head {
+      flex-direction: column;
+      align-items: start;
+    }
+
+    .status-message {
+      text-align: left;
+    }
+
+    .sprite-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
