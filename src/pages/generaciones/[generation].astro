@@ -5,7 +5,7 @@ import { generations } from "../../data/generations";
 export function getStaticPaths() {
   return generations.map((generation) => ({
     params: { generation: generation.id },
-    props: { generationInfo: generation }
+    props: { generationInfo: generation },
   }));
 }
 
@@ -39,21 +39,34 @@ const { generationInfo } = Astro.props;
           <p class="panel-kicker">Sprites</p>
           <h2 id="generationTitle">Cargando Pokemon...</h2>
         </div>
-        <p id="statusMessage" class="status-message">Preparando la Pokedex de la generacion.</p>
+        <p id="statusMessage" class="status-message">
+          Preparando la Pokedex de la generacion.
+        </p>
       </div>
 
-      <div id="pokemonList" class="pokemon-list" data-generation={generationInfo.id}></div>
+      <div
+        id="pokemonList"
+        class="pokemon-list"
+        data-generation={generationInfo.id}
+      >
+      </div>
     </section>
   </main>
 
   <dialog id="pokemonPopup" class="pokemon-dialog">
     <article class="dialog-card">
-      <button id="closePopup" class="close-button" type="button" aria-label="Cerrar popup">
+      <button
+        id="closePopup"
+        class="close-button"
+        type="button"
+        aria-label="Cerrar popup"
+      >
         <span aria-hidden="true">&times;</span>
       </button>
       <p id="popupDexId" class="popup-dex"></p>
       <h2 id="popupName" class="pixel-title popup-name"></h2>
       <p id="popupType" class="popup-type"></p>
+      <div id="popupStats" class="pokemon-stats"></div>
 
       <div class="sprite-grid">
         <section>
@@ -99,7 +112,9 @@ const { generationInfo } = Astro.props;
     const popupShiny = document.getElementById("popupShiny");
     const popupShinyBack = document.getElementById("popupShinyBack");
     const closePopup = document.getElementById("closePopup");
-    const fallbackSprite = "https://upload.wikimedia.org/wikipedia/commons/5/55/Question_Mark.svg";
+    const fallbackSprite =
+      "https://upload.wikimedia.org/wikipedia/commons/5/55/Question_Mark.svg";
+    const popupStats = document.getElementById("popupStats");
 
     const typeColors = {
       normal: ["#a8a878", "#d8d8b8"],
@@ -119,7 +134,7 @@ const { generationInfo } = Astro.props;
       dark: ["#705848", "#a8a878"],
       dragon: ["#7038f8", "#6890f0"],
       steel: ["#b8b8d0", "#a8a878"],
-      fairy: ["#ee99ac", "#f8d030"]
+      fairy: ["#ee99ac", "#f8d030"],
     };
 
     generationTitle.textContent = `Pokemon de ${generationInfo.region}`;
@@ -141,7 +156,7 @@ const { generationInfo } = Astro.props;
               throw new Error(`No se pudo cargar ${pokemon.name}.`);
             }
             return detailResponse.json();
-          })
+          }),
         );
 
         pokemonDetails.sort((a, b) => a.id - b.id);
@@ -196,6 +211,25 @@ const { generationInfo } = Astro.props;
       popupBack.src = details.sprites.back_default || fallbackSprite;
       popupShiny.src = details.sprites.front_shiny || fallbackSprite;
       popupShinyBack.src = details.sprites.back_shiny || fallbackSprite;
+      popupStats.innerHTML = details.stats
+        .map((stat) => {
+          const statName = stat.stat.name.replace("-", " ");
+          const statValue = stat.base_stat;
+          const statPercent = Math.min((statValue / 255) * 100, 100);
+
+          return `
+      <div class="stat-row">
+        <div class="stat-head">
+          <span>${statName}</span>
+          <strong>${statValue}</strong>
+        </div>
+        <div class="stat-bar">
+          <span style="width: ${statPercent}%"></span>
+        </div>
+      </div>
+    `;
+        })
+        .join("");
       popup.showModal();
     }
 
@@ -235,8 +269,16 @@ const { generationInfo } = Astro.props;
     border: 3px solid var(--border);
     border-radius: 28px;
     background:
-      radial-gradient(circle at top right, color-mix(in srgb, var(--glow) 65%, white), transparent 32%),
-      linear-gradient(135deg, color-mix(in srgb, var(--accent) 24%, white), rgba(255, 252, 242, 0.96));
+      radial-gradient(
+        circle at top right,
+        color-mix(in srgb, var(--glow) 65%, white),
+        transparent 32%
+      ),
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--accent) 24%, white),
+        rgba(255, 252, 242, 0.96)
+      );
     box-shadow: var(--shadow);
   }
 
@@ -323,7 +365,11 @@ const { generationInfo } = Astro.props;
     border: 3px solid var(--border);
     border-radius: 24px;
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 250, 240, 0.92)),
+      linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.98),
+        rgba(255, 250, 240, 0.92)
+      ),
       linear-gradient(135deg, var(--type-color1), var(--type-color2));
     cursor: pointer;
     box-shadow: 0 14px 0 rgba(34, 31, 26, 0.1);
@@ -439,12 +485,11 @@ const { generationInfo } = Astro.props;
     padding: 0.45rem 0.7rem;
     border: 2px solid var(--border);
     border-radius: 999px;
-    background:
-      linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--pill-color, #fffaf0) 24%, white),
-        color-mix(in srgb, var(--pill-color, #fffaf0) 12%, #fff7ef)
-      );
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--pill-color, #fffaf0) 24%, white),
+      color-mix(in srgb, var(--pill-color, #fffaf0) 12%, #fff7ef)
+    );
     text-transform: capitalize;
     font-weight: 700;
     color: var(--text);
@@ -511,5 +556,51 @@ const { generationInfo } = Astro.props;
     .sprite-grid {
       grid-template-columns: 1fr;
     }
+  }
+  .pokemon-stats {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1.4rem;
+    padding: 1rem;
+    border: 2px solid var(--border);
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.72);
+  }
+
+  :global(.stat-row) {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  :global(.stat-head) {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.85rem;
+    text-transform: capitalize;
+  }
+
+  :global(.stat-head span) {
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  :global(.stat-head strong) {
+    color: var(--text);
+  }
+
+  :global(.stat-bar) {
+    height: 12px;
+    overflow: hidden;
+    border: 2px solid var(--border);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+  }
+
+  :global(.stat-bar span) {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #ffcf56, #f08030);
   }
 </style>
